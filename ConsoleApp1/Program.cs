@@ -1,5 +1,10 @@
-﻿using System;
+using IronBarCode;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Drawing;
+using System.Security.Policy;
+using System.Threading;
 
 namespace PostoGasolinaConsoleApp
 {
@@ -40,50 +45,59 @@ namespace PostoGasolinaConsoleApp
             List<Produto> produtosEscolhidos = new List<Produto>();
             List<Produto> produtosQuantidade = new List<Produto>();
             Cliente cliente = null;
+            
 
-            while (true)
-            {   
-                Console.Clear();
-                CriarLogo();
-                ExibirProdutos(produtos);
-                ExibirTotal(precoTotal);
-                ExibirCarrinho(produtosEscolhidos.Skip(Math.Max(0, produtosEscolhidos.Count - 9)).ToList(),
-                               produtosQuantidade.Skip(Math.Max(0, produtosQuantidade.Count - 9)).ToList());
 
-                int escolha = ObterEscolhaUsuario(produtos.Count);
 
-               
 
-                if (escolha == 0)
+                    while (true)
                 {
-                    break;
-                }
+                    Console.Clear();
+                    CriarLogo();
+                
+                    ExibirProdutos(produtos);
+                    ExibirTotal(precoTotal);
+                    ExibirCarrinho(produtosEscolhidos.Skip(Math.Max(0, produtosEscolhidos.Count - 9)).ToList(),
+                                   produtosQuantidade.Skip(Math.Max(0, produtosQuantidade.Count - 9)).ToList());
 
-                if (escolha >= 1 && escolha <= produtos.Count)
-                {
-                    Produto produtoEscolhido = produtos[escolha - 1];
+                    int escolha = ObterEscolhaUsuario(produtos.Count);
 
-                    if (produtoEscolhido.PermiteQuantidade)
+
+
+                    if (escolha == 0)
                     {
-                        decimal quantidade = ObterQuantidadeProduto();
-                        produtoEscolhido.Quantidade = quantidade;
-                        produtosQuantidade.Add(produtoEscolhido);
+                        break;
+                    }
 
-                        Console.WriteLine($"\nVocê escolheu: {produtoEscolhido.Nome} - {quantidade} litros - R${produtoEscolhido.Preco:F2} por litro");
-                        precoTotal += (produtoEscolhido.Preco * quantidade);
+                    if (escolha >= 1 && escolha <= produtos.Count)
+                    {
+                        Produto produtoEscolhido = produtos[escolha - 1];
+
+                        if (produtoEscolhido.PermiteQuantidade)
+                        {
+                            decimal quantidade = ObterQuantidadeProduto();
+                            produtoEscolhido.Quantidade = quantidade;
+                            produtosQuantidade.Add(produtoEscolhido);
+
+                            Console.WriteLine($"\nVocê escolheu: {produtoEscolhido.Nome} - {quantidade} litros - R${produtoEscolhido.Preco:F2} por litro");
+                            precoTotal += (produtoEscolhido.Preco * quantidade);
+                        }
+                        else
+                        {
+                            produtosEscolhidos.Add(produtoEscolhido);
+                            Console.WriteLine($"\nVocê escolheu: {produtoEscolhido.Nome} - R${produtoEscolhido.Preco:F2}");
+                            precoTotal += produtoEscolhido.Preco;
+                        }
                     }
                     else
                     {
-                        produtosEscolhidos.Add(produtoEscolhido);
-                        Console.WriteLine($"\nVocê escolheu: {produtoEscolhido.Nome} - R${produtoEscolhido.Preco:F2}");
-                        precoTotal += produtoEscolhido.Preco;
+                        Console.WriteLine("\nOpção inválida. Por favor, insira um número de produto válido.");
                     }
                 }
-                else
-                {
-                    Console.WriteLine("\nOpção inválida. Por favor, insira um número de produto válido.");
-                }
-            }
+
+
+
+
             static void ExibirCarrinho(List<Produto> produtosEscolhidos, List<Produto> produtosQuantidade)
             {
                 Console.WriteLine("\nCarrinho de Compras:");
@@ -112,8 +126,10 @@ namespace PostoGasolinaConsoleApp
             ExibirOpcoesPagamento();
 
             int formaPagamento = ObterEscolhaUsuario(3);
+            
 
             ProcessarPagamento(precoTotal, clienteCadastrado, formaPagamento);
+            FinalizarCompra(produtosEscolhidos, produtosQuantidade, precoTotal);
 
             Console.WriteLine("\nPressione Enter para sair.");
             Console.ReadLine();
@@ -192,6 +208,23 @@ namespace PostoGasolinaConsoleApp
             Console.WriteLine($"\nCadastro realizado com sucesso! Desconto de {desconto}% aplicado. Novo Total: R${precoTotal:F2}");
         }
 
+        static void CriarQRCode()
+        {
+            var barcode = QRCodeWriter.CreateQrCodeWithLogo("https://imperiumgasolina.com.br", @"C:\\Users\\dbadmin\\source\\repos\\ImperiumGasolina\\QRCode\\logo.png",350);
+            //GeneratedBarcode barcode = IronBarCode.BarcodeWriter.Create("https://imperiogasolina.com.br", BarcodeEncoding.QRCode);
+           // var logo = new Bitmap("C:\\Users\\dbadmin\\source\\repos\\ImperiumGasolina\\QRCode\\logo.png");
+            //barcode.Image = logo;
+            barcode.AddAnnotationTextAboveBarcode("IMPERIUM GASOLINA");
+            barcode.AddAnnotationTextBelowBarcode("www.imperiumgasolina.com.br");
+
+            barcode.SaveAsPng("C:\\Users\\dbadmin\\source\\repos\\ImperiumGasolina\\QRCode\\barcode.png");
+            string arquivoHTML = "C:\\Users\\dbadmin\\source\\repos\\ImperiumGasolina\\QRCode\\QRCODE.html"; 
+
+            string navegador = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"; 
+            try         {           
+                Process.Start(navegador, arquivoHTML);        
+            }         catch (Exception ex)         {Console.WriteLine("Ocorreu um erro ao gerar o QRCode. Código de Erro: " + ex.Message);         } 
+        }
 
         static void CriarLogo()
         {
@@ -202,24 +235,63 @@ namespace PostoGasolinaConsoleApp
         static void ExibirOpcoesPagamento()
         {
             Console.WriteLine("\nOpções de pagamento:");
-            Console.WriteLine("1. Débito");
+            Console.WriteLine("1. Débito/PIX");
             Console.WriteLine("2. Crédito");
             Console.WriteLine("3. Dinheiro");
+        }
+        static void FinalizarCompra(List<Produto> produtosEscolhidos, List<Produto> produtosQuantidade, decimal precoTotal)
+        {
+            Console.Clear();
+           CriarLogo();
+
+            Console.WriteLine("Itens no Carrinho:");
+
+            foreach (var produto in produtosEscolhidos)
+            {
+                Console.WriteLine($"{produto.Nome} - R${produto.Preco:F2}");
+            }
+
+            foreach (var produto in produtosQuantidade)
+            {
+                Console.WriteLine($"{produto.Nome} - {produto.Quantidade} litros - R${produto.Preco:F2} por litro");
+            }
+
+            Console.WriteLine($"\nTotal a Pagar: R${precoTotal:F2}\n");
+
+            Console.WriteLine("Compra finalizada! Obrigado por escolher Imperium Gasolina.");
+
+            Console.WriteLine("\nPressione Enter para sair.");
+            Console.ReadLine();
         }
 
         static void ProcessarPagamento(decimal precoTotal, bool clienteCadastrado, int formaPagamento)
         {
+            string formaPagamentoTexto = "";
+
+
+
             switch (formaPagamento)
             {
                 case 1:
-                    Console.WriteLine("\nPagamento em Débito bem-sucedido!");
+                    
+                    CriarQRCode();
+                    formaPagamentoTexto = "PAGAMENTO VIA DÉBITO / PIX";
+                    Console.WriteLine($"Forma de Pagamento: {formaPagamentoTexto}");
+
+                  
                     break;
                 case 2:
-                    Console.WriteLine("\nPagamento em Crédito bem-sucedido!");
+                    CriarQRCode();
+                    formaPagamentoTexto = "PAGAMENTO VIA CREDITO";
+                    
+                    Console.WriteLine($"Forma de Pagamento: {formaPagamentoTexto}");
+                   
                     break;
                 case 3:
                     if (clienteCadastrado)
                     {
+                        formaPagamentoTexto = "PAGAMENTO EM DINHEIRO";
+                        Console.WriteLine($"Forma de Pagamento: {formaPagamentoTexto}");
                         Console.Write("Digite o valor pago em dinheiro: ");
                         if (decimal.TryParse(Console.ReadLine(), out decimal valorPago))
                         {
@@ -247,6 +319,7 @@ namespace PostoGasolinaConsoleApp
                     Console.WriteLine("\nOpção de pagamento inválida.");
                     break;
             }
+            Console.WriteLine($"Forma de Pagamento: {formaPagamentoTexto}");
         }
     }
 }
