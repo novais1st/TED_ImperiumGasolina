@@ -210,7 +210,7 @@ namespace PostoGasolinaConsoleApp
 
         static void CriarQRCode()
         {
-            var barcode = QRCodeWriter.CreateQrCodeWithLogo("https://imperiumgasolina.com.br", @"C:\\Users\\dbadmin\\source\\repos\\ImperiumGasolina\\QRCode\\logo.png",350);
+            var barcode = QRCodeWriter.CreateQrCodeWithLogo("https://imperiumgasolina.nicepage.io", @"C:\\Users\\dbadmin\\source\\repos\\ImperiumGasolina\\QRCode\\logo.png",350);
             //GeneratedBarcode barcode = IronBarCode.BarcodeWriter.Create("https://imperiogasolina.com.br", BarcodeEncoding.QRCode);
            // var logo = new Bitmap("C:\\Users\\dbadmin\\source\\repos\\ImperiumGasolina\\QRCode\\logo.png");
             //barcode.Image = logo;
